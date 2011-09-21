@@ -1,10 +1,5 @@
 #pragma strict
 
-var appUrl : String = "http://gaedoodler.appspot.com/";
-
-var myUid : String;
-var hisUid : String;
-
 var brushPrefab : GameObject;
 var strokeLength = 256;
 
@@ -30,31 +25,33 @@ function Update() {
 }
 
 function SendDataCoroutine() : IEnumerator {
+	var match = GetComponent.<Matchmaker>();
+
 	while (true) {
 		var form = new WWWForm();
-		form.AddField("uid", myUid);
-		form.AddField("data", SerializeStroke(myStroke));
+		form.AddField("uid", match.myUid);
+		form.AddField("str", SerializeStroke(myStroke));
 		
-		var www = new WWW(appUrl + "set", form);
+		var www = new WWW(Config.appUrl + "update", form);
+		yield WaitForSeconds(Config.requestInterval);
 		yield www;
-
-		yield WaitForSeconds(1.0);
 	}
 }
 
 function RecvDataCoroutine() : IEnumerator {
+	var match = GetComponent.<Matchmaker>();
+
 	while (true) {
 		var form = new WWWForm();
-		form.AddField("uid", hisUid);
+		form.AddField("uid", match.hisUid);
 		
-		var www = new WWW(appUrl + "get", form);
+		var www = new WWW(Config.appUrl + "stroke", form);
+		yield WaitForSeconds(Config.requestInterval);
 		yield www;
 
 		if (www.text != "none") {
 			DeserializeStroke(www.text);
 		}
-
-		yield WaitForSeconds(1.0);
 	}
 }
 
@@ -79,10 +76,14 @@ private function SerializePoint(point : Vector3) : String {
 }
 
 private function DeserializePoint(data : String) : Vector3 {
-	var raw = int.Parse(data);
-	var x = 0.01 * (raw & 0xffff) - 100.0;
-	var y = 0.01 * (raw >> 16   ) - 100.0;
-	return Vector3(x, y);
+	var raw : int;
+	if (int.TryParse(data, raw)) {
+		var x = 0.01 * (raw & 0xffff) - 100.0;
+		var y = 0.01 * (raw >> 16   ) - 100.0;
+		return Vector3(x, y);
+	} else {
+		return Vector3.zero;
+	}
 }
 
 private function DeserializeStroke(text : String) {

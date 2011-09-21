@@ -4,10 +4,16 @@ runtime: python
 api_version: 1
 
 handlers:
-- url: /set
+- url: /match
   script: main.py
 
-- url: /get
+- url: /mate
+  script: main.py
+
+- url: /stroke
+  script: main.py
+
+- url: /update
   script: main.py
 
 - url: .*
