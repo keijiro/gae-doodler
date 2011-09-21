@@ -1,0 +1,14 @@
+application: gaedoodler
+version: 1
+runtime: python
+api_version: 1
+
+handlers:
+- url: /set
+  script: main.py
+
+- url: /get
+  script: main.py
+
+- url: .*
+  script: main.py
