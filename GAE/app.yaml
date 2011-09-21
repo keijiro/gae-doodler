@@ -16,5 +16,8 @@ handlers:
 - url: /update
   script: main.py
 
+- url: /quit
+  script: main.py
+
 - url: .*
   script: main.py

@@ -3,9 +3,18 @@
 var brushPrefab : GameObject;
 var strokeLength = 256;
 
+private var myUid : String;
+private var hisUid : String;
+
 private var prevPoint = Vector3(-999, -999);
+
 private var myStroke : Array = new Array();
 private var hisStroke : Array = new Array();
+
+function SetUids(myUid : String, hisUid : String) {
+	this.myUid = myUid;
+	this.hisUid = hisUid;
+}
 
 function Start() {
 	StartCoroutine(SendDataCoroutine());
@@ -25,11 +34,9 @@ function Update() {
 }
 
 function SendDataCoroutine() : IEnumerator {
-	var match = GetComponent.<Matchmaker>();
-
 	while (true) {
 		var form = new WWWForm();
-		form.AddField("uid", match.myUid);
+		form.AddField("uid", myUid);
 		form.AddField("str", SerializeStroke(myStroke));
 		
 		var www = new WWW(Config.appUrl + "update", form);
@@ -39,19 +46,22 @@ function SendDataCoroutine() : IEnumerator {
 }
 
 function RecvDataCoroutine() : IEnumerator {
-	var match = GetComponent.<Matchmaker>();
-
 	while (true) {
 		var form = new WWWForm();
-		form.AddField("uid", match.hisUid);
+		form.AddField("uid", hisUid);
 		
 		var www = new WWW(Config.appUrl + "stroke", form);
 		yield WaitForSeconds(Config.requestInterval);
 		yield www;
-
-		if (www.text != "none") {
-			DeserializeStroke(www.text);
+		
+		if (www.text == "invalid") {
+			for (var brush : GameObject in myStroke) Destroy(brush);
+			for (var brush : GameObject in hisStroke) Destroy(brush);
+			Destroy(gameObject);
+			break;
 		}
+
+		if (www.text != "none") DeserializeStroke(www.text);
 	}
 }
 
