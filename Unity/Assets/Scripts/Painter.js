@@ -1,6 +1,6 @@
 #pragma strict
 
-var brushPrefab : GameObject;
+var brushPrefabs : GameObject[];
 var strokeLength = 256;
 
 private var myUid : String;
@@ -25,12 +25,17 @@ function Update() {
 	if (Input.GetMouseButton(0)) {
 		var point = ScreenToWorldPoint(Input.mousePosition);
 		if ((prevPoint - point).magnitude > 0.02) {
-			var brush = Instantiate(brushPrefab, point, Quaternion.identity) as GameObject;
+			var brush = Instantiate(brushPrefabs[0], point, Quaternion.identity) as GameObject;
 			myStroke.Add(brush);
 			if (myStroke.length >= strokeLength) Destroy(myStroke.shift());
 			prevPoint = point;
 		}
 	}
+}
+
+function OnDestroy() {
+	for (var brush : GameObject in myStroke) Destroy(brush);
+	for (var brush : GameObject in hisStroke) Destroy(brush);
 }
 
 function SendDataCoroutine() : IEnumerator {
@@ -55,8 +60,6 @@ function RecvDataCoroutine() : IEnumerator {
 		yield www;
 		
 		if (www.text == "invalid") {
-			for (var brush : GameObject in myStroke) Destroy(brush);
-			for (var brush : GameObject in hisStroke) Destroy(brush);
 			Destroy(gameObject);
 			break;
 		}
@@ -105,7 +108,7 @@ private function DeserializeStroke(text : String) {
 	
 	for (var data in text.Split(","[0])) {
 		var point = DeserializePoint(data);
-		var brush = Instantiate(brushPrefab, point, Quaternion.identity) as GameObject;
+		var brush = Instantiate(brushPrefabs[1], point, Quaternion.identity) as GameObject;
 		hisStroke.Add(brush);
 	}
 }

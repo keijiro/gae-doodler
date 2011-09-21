@@ -9,7 +9,7 @@ from google.appengine.ext import webapp
 from google.appengine.ext.webapp import util
 
 # データの生存期限。
-doodler_expire = 30.0
+doodler_expire = 5.0
 
 class Doodler(db.Model):
     '''プレイヤーのデータモデル'''
@@ -24,6 +24,12 @@ def CheckExpiration(doodler):
         return None
     else:
         return doodler
+
+def UpdateTimestamp(doodler):
+	'''タイムスタンプの更新'''
+	if doodler:
+		doodler.timestamp = datetime.now()
+		doodler.put()
 
 class MatchHandler(webapp.RequestHandler):
     '''マッチング処理'''
@@ -68,6 +74,7 @@ class GetMateHandler(webapp.RequestHandler):
             return
         # 相手のUIDをレスポンスとして返す。
         doodler = CheckExpiration(Doodler.get_by_key_name(uid))
+        UpdateTimestamp(doodler)
         self.response.out.write(doodler.mate if doodler else 'invalid')
 
 class GetStrokeHandler(webapp.RequestHandler):
@@ -80,6 +87,7 @@ class GetStrokeHandler(webapp.RequestHandler):
             return
         # ストロークをレスポンスとして返す。
         doodler = CheckExpiration(Doodler.get_by_key_name(uid))
+        UpdateTimestamp(doodler)
         self.response.out.write(doodler.stroke if doodler else 'invalid')
 
 class UpdateStrokeHandler(webapp.RequestHandler):
