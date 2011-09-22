@@ -8,8 +8,8 @@ from google.appengine.api import memcache
 from google.appengine.ext import webapp
 from google.appengine.ext.webapp import util
 
-# 接続の生存期限。
-con_expire = 30.0
+# ユーザエントリの生存期限。
+user_entry_expire = 5.0
 
 # グループ作成用のダミーモデル。
 class Entry(db.Model):
@@ -114,6 +114,33 @@ class QuitHandler(webapp.RequestHandler):
         # ともかく成功メッセージを返す。
         self.response.out.write('ok')
 
+# 古いユーザエントリを破棄する処理。
+class PurgeHandler(webapp.RequestHandler):
+    def get(self):
+        # 最終アクセスの古いエントリのキーを集める。
+        deadline = datetime.now() - timedelta(0, user_entry_expire)
+        keys = LastAccess.all(keys_only = True).filter("dateTime <", deadline).fetch(20)
+        # ユーザーエントリをまとめて削除する。
+        def txn(key_name, parent):
+            stroke = Stroke.get_by_key_name(key_name, parent)
+            last = LastAccess.get_by_key_name(key_name, parent)
+            db.delete((stroke, last))
+        for key in keys:
+            entry = Entry.get(key.parent())
+            db.run_in_transaction(txn, key.name(), entry)
+            entry.delete()
+        # ともかく成功メッセージを返す。
+        self.response.out.write('ok')
+
+# 不要なマッチ情報を破棄する処理。
+class CleanupHandler(webapp.RequestHandler):
+    def get(self):
+        match_entry = Entry.get_or_insert('match')
+        keys = Match.all(keys_only = True).ancestor(match_entry).fetch(20)
+        for key in keys:
+            if not Entry.get_by_key_name(key.name()):
+                Match.get(key).delete()
+
 # トップページのハンドラー。
 class MainHandler(webapp.RequestHandler):
     def get(self):
@@ -126,6 +153,8 @@ def main():
                                           ('/mate', GetMateHandler),
                                           ('/stroke', GetStrokeHandler),
                                           ('/update', UpdateStrokeHandler),
+                                          ('/purge', PurgeHandler),
+                                          ('/cleanup', CleanupHandler),
                                           ('/quit', QuitHandler)],
                                          debug=True)
     util.run_wsgi_app(application)

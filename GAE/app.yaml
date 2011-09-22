@@ -19,5 +19,11 @@ handlers:
 - url: /quit
   script: main.py
 
+- url: /purge
+  script: main.py
+
+- url: /cleanup
+  script: main.py
+
 - url: .*
   script: main.py

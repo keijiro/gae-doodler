@@ -1,0 +1,9 @@
+cron:
+
+- description: old stroke cleanup
+  url: /purge
+  schedule: every 1 minutes
+
+- description: old match cleanup
+  url: /cleanup
+  schedule: every 10 minutes

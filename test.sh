@@ -19,6 +19,30 @@ testcase () {
 testcase quit test1 none ok
 testcase quit test2 none ok
 
+testcase match test1 none ok
+testcase match test2 none ok
+
+testcase mate test1 none test2
+testcase mate test2 none test1
+
+testcase update test1 abc ok
+testcase update test2 xyz ok
+
+sleep 3
+
+testcase stroke test1 none abc
+testcase stroke test2 none xyz
+
+sleep 60
+
+testcase stroke test1 none invalid
+testcase stroke test2 none invalid
+
+exit
+
+testcase quit test1 none ok
+testcase quit test2 none ok
+
 testcase mate test1 none invalid
 testcase mate test2 none invalid
 
