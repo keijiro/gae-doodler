@@ -9,27 +9,26 @@ from google.appengine.ext import webapp
 from google.appengine.ext.webapp import util
 
 # データの生存期限。
-doodler_expire = 5.0
+doodler_expire = 30.0
 
-class Doodler(db.Model):
-    '''プレイヤーのデータモデル'''
-    mate = db.StringProperty()
-    stroke = db.TextProperty()
-    timestamp = db.DateTimeProperty()
+class Matchmaker(db.Model):
+    None
 
-def CheckExpiration(doodler):
-    '''データの期限切れチェック'''
-    if doodler and datetime.now() - doodler.timestamp > timedelta(0, doodler_expire):
-        doodler.delete()
-        return None
-    else:
-        return doodler
+class Match(db.Model):
+    his_uid = db.StringProperty()
 
-def UpdateTimestamp(doodler):
-	'''タイムスタンプの更新'''
-	if doodler:
-		doodler.timestamp = datetime.now()
-		doodler.put()
+class Stroke(db.Model):
+    data = db.TextProperty()
+
+class Timestamp(db.Model):
+    dateTime = db.DateTimeProperty()
+
+def match_pair(matchmaker):
+    pair = Match.all().ancestor(matchmaker).filter('his_uid =', 'none').fetch(2)
+    if len(pair) > 1:
+        pair[0].his_uid = pair[1].key().name()
+        pair[1].his_uid = pair[0].key().name()
+        db.put(pair)
 
 class MatchHandler(webapp.RequestHandler):
     '''マッチング処理'''
@@ -39,30 +38,14 @@ class MatchHandler(webapp.RequestHandler):
         if not uid:
             self.response.out.write('invalid')
             return
-        # プレイヤーの初期化。
-        doodler = Doodler(key_name = uid, mate = 'none', stroke = 'none', timestamp = datetime.now())
-        doodler.put()
-        # まず、タイムスタンプの古いプレイヤーを探す。
-        query = Doodler.all()
-        query.filter('timestamp <', datetime.now() - timedelta(0, doodler_expire))
-        matched = query.fetch(limit = 10)
-        for doodler in matched: doodler.delete()
-        # マッチ相手が居ないプレイヤーを探す。
-        query = Doodler.all()
-        query.filter('__key__ !=', db.Key.from_path('Doodler', uid))
-        query.filter('mate =', 'none')
-        matched = query.get()
-        if matched:
-            # 自分と相手のマッチ情報を更新する。
-            doodler.mate = matched.key().name()
-            doodler.put()
-            matched.mate = uid
-            matched.put()
-            # 相手のUIDをレスポンスとして返す。
-            self.response.out.write(doodler.mate)
-        else:
-            # 相手無し。待ちに入る。
-            self.response.out.write('wait')
+        #
+        matchmaker = Matchmaker.get_or_insert('global')
+        Match(parent = matchmaker, key_name = uid, his_uid = 'none').put()
+        Stroke(key_name = uid).put()
+        #
+        db.run_in_transaction(match_pair, matchmaker)
+        #
+        self.response.out.write('ok')
 
 class GetMateHandler(webapp.RequestHandler):
     '''マッチ相手の取得'''
@@ -73,9 +56,8 @@ class GetMateHandler(webapp.RequestHandler):
             self.response.out.write('invalid')
             return
         # 相手のUIDをレスポンスとして返す。
-        doodler = CheckExpiration(Doodler.get_by_key_name(uid))
-        UpdateTimestamp(doodler)
-        self.response.out.write(doodler.mate if doodler else 'invalid')
+        match = Match.get_by_key_name(uid, Matchmaker.get_by_key_name('global'))
+        self.response.out.write(match.his_uid if match else 'invalid')
 
 class GetStrokeHandler(webapp.RequestHandler):
     '''ストロークの取得'''
@@ -86,28 +68,20 @@ class GetStrokeHandler(webapp.RequestHandler):
             self.response.out.write('invalid')
             return
         # ストロークをレスポンスとして返す。
-        doodler = CheckExpiration(Doodler.get_by_key_name(uid))
-        UpdateTimestamp(doodler)
-        self.response.out.write(doodler.stroke if doodler else 'invalid')
+        stroke = Stroke.get_by_key_name(uid)
+        self.response.out.write(stroke.data if stroke else 'invalid')
 
 class UpdateStrokeHandler(webapp.RequestHandler):
     '''ストロークの更新'''
     def post(self):
         # 引数の取得。
         uid = self.request.get('uid')
-        stroke = self.request.get('str')
-        if not uid or not stroke:
-            self.response.out.write('invalid')
-            return
-        # 現状の取得。
-        doodler = CheckExpiration(Doodler.get_by_key_name(uid))
-        if not doodler:
+        data = self.request.get('data')
+        if not uid or not data:
             self.response.out.write('invalid')
             return
         # ストロークの更新。
-        doodler.stroke = stroke;
-        doodler.timestamp = datetime.now()
-        doodler.put()
+        Stroke(key_name = uid, data = data).put()
         # 成功メッセージを返す。
         self.response.out.write('ok')
 
@@ -120,8 +94,8 @@ class QuitHandler(webapp.RequestHandler):
             self.response.out.write('invalid')
             return
         # 削除。
-        doodler = Doodler.get_by_key_name(uid)
-        if doodler: doodler.delete()
+        match = Match.get_by_key_name(uid, Matchmaker.get_by_key_name('global'))
+        if match: match.delete();
         # ともかく成功メッセージを返す。
         self.response.out.write('ok')
 

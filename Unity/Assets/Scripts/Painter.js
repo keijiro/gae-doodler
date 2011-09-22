@@ -27,22 +27,22 @@ function Update() {
 		if ((prevPoint - point).magnitude > 0.02) {
 			var brush = Instantiate(brushPrefabs[0], point, Quaternion.identity) as GameObject;
 			myStroke.Add(brush);
-			if (myStroke.length >= strokeLength) Destroy(myStroke.shift());
+			if (myStroke.length >= strokeLength) Destroy(myStroke.shift() as GameObject);
 			prevPoint = point;
 		}
 	}
 }
 
 function OnDestroy() {
-	for (var brush : GameObject in myStroke) Destroy(brush);
-	for (var brush : GameObject in hisStroke) Destroy(brush);
+	for (var brush : Object in myStroke) Destroy(brush as GameObject);
+	for (var brush : Object in hisStroke) Destroy(brush as GameObject);
 }
 
 function SendDataCoroutine() : IEnumerator {
 	while (true) {
 		var form = new WWWForm();
 		form.AddField("uid", myUid);
-		form.AddField("str", SerializeStroke(myStroke));
+		form.AddField("data", SerializeStroke(myStroke));
 		
 		var www = new WWW(Config.appUrl + "update", form);
 		yield WaitForSeconds(Config.requestInterval);
@@ -76,8 +76,8 @@ private function ScreenToWorldPoint(point : Vector3) : Vector3 {
 private function SerializeStroke(stroke : Array) : String {
 	if (stroke.length == 0) return "";
 	var text = "";
-	for (var brush : GameObject in stroke) {
-		text += SerializePoint(brush.transform.position) + ",";
+	for (var brush : Object in stroke) {
+		text += SerializePoint((brush as GameObject).transform.position) + ",";
 	}
 	return text.Remove(text.length - 1);
 }
@@ -100,8 +100,8 @@ private function DeserializePoint(data : String) : Vector3 {
 }
 
 private function DeserializeStroke(text : String) {
-	for (var brush : GameObject in hisStroke) {
-		Destroy(brush);
+	for (var brush : Object in hisStroke) {
+		Destroy(brush as GameObject);
 	}
 	
 	hisStroke = new Array();

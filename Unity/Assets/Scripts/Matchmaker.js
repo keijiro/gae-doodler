@@ -20,19 +20,15 @@ function Start() {
 		var www = new WWW(Config.appUrl + "match", form);
 		yield www;
 		
-		if (www.text != "wait") {
-			hisUid = www.text;
-		} else {
-			while (true) {
-				yield WaitForSeconds(0.5);
-				
-				www = new WWW(Config.appUrl + "mate", form);
-				yield www;
-				
-				if (www.text != "none") {
-					hisUid = www.text;
-					break;
-				}
+		while (true) {
+			yield WaitForSeconds(0.5);
+			
+			www = new WWW(Config.appUrl + "mate", form);
+			yield www;
+			
+			if (www.text != "none") {
+				hisUid = www.text;
+				break;
 			}
 		}
 		
